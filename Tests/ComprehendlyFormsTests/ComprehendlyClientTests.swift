@@ -36,7 +36,7 @@ final class ComprehendlyClientTests: XCTestCase {
       let params = try XCTUnwrap(json["params"] as? [String: Any])
       let payload = try XCTUnwrap(params["payload"] as? [String: Any])
       XCTAssertEqual(payload["page_id"] as? String, "page-123")
-      XCTAssertNil(payload["title"])
+      XCTAssertFalse(payload.keys.contains("title"))
 
       let fieldValues = try XCTUnwrap(payload["field_values"] as? [String: Any])
       XCTAssertEqual(fieldValues["mood"] as? String, "ok")
