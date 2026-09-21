@@ -80,6 +80,40 @@ final class ComprehendlyClientTests: XCTestCase {
     XCTAssertNil(requestPayload["title"])
   }
 
+  func testSubmissionsSaveOmitsEmptyTitle() async throws {
+    let testID = UUID().uuidString
+    let session = makeSession(testID: testID)
+    let client = ComprehendlyClient(
+      publishableKey: "pk_test_123",
+      functionsUrl: "https://example.test/functions/v1",
+      anonKey: "anon",
+      session: session
+    )
+    client.accessToken = "token_123"
+
+    let recorder = RequestRecorder()
+    MockURLProtocol.install(
+      testID: testID,
+      requestHandler: { _ in .ok(["data": ["id": "sub_123"]]) },
+      requestObserver: { recorder.append($0) }
+    )
+    defer { MockURLProtocol.remove(testID: testID) }
+
+    _ = try await client.submissionsSave(
+      pageId: "page_123",
+      fieldValues: ["mood": "ok"],
+      title: ""
+    )
+
+    let requests = recorder.all()
+    let captured = try XCTUnwrap(requests.last)
+    let bodyData = try XCTUnwrap(bodyData(from: captured))
+    let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
+    let params = try XCTUnwrap(body["params"] as? [String: Any])
+    let requestPayload = try XCTUnwrap(params["payload"] as? [String: Any])
+    XCTAssertNil(requestPayload["title"])
+  }
+
   private func makeSession(testID: String) -> URLSession {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
