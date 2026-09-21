@@ -6,6 +6,7 @@ public final class ComprehendlyClient: ObservableObject {
   public var origin: String
   public var functionsUrl: String
   public var anonKey: String
+  public var session: URLSession
   public var accessToken: String?
   public let store = FieldStore()
 
@@ -13,12 +14,14 @@ public final class ComprehendlyClient: ObservableObject {
     publishableKey: String,
     origin: String = "https://ios-demo.comprehendly.nz",
     functionsUrl: String = "https://api.stepcare.app/functions/v1",
-    anonKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cGFhdWh6dXFheGx1dXpqc2hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkwMzE4NDUsImV4cCI6MjAyNDYwNzg0NX0.KY98XuoxMJAh-Qhb-_ozJzmFoOdI8ZcHqrFBNblf8fo"
+    anonKey: String = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN0cGFhdWh6dXFheGx1dXpqc2hkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDkwMzE4NDUsImV4cCI6MjAyNDYwNzg0NX0.KY98XuoxMJAh-Qhb-_ozJzmFoOdI8ZcHqrFBNblf8fo",
+    session: URLSession = .shared
   ) {
     self.publishableKey = publishableKey
     self.origin = origin
     self.functionsUrl = functionsUrl
     self.anonKey = anonKey
+    self.session = session
   }
 
   public func exchange() async throws {
@@ -37,7 +40,7 @@ public final class ComprehendlyClient: ObservableObject {
         "forms.submissions:write"
       ]
     ])
-    let (data, res) = try await URLSession.shared.data(for: req)
+    let (data, res) = try await session.data(for: req)
     let http = res as? HTTPURLResponse
     let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     guard let http, (200 ..< 300).contains(http.statusCode) else {
@@ -59,7 +62,7 @@ public final class ComprehendlyClient: ObservableObject {
       "operation": operation,
       "params": params
     ])
-    let (data, res) = try await URLSession.shared.data(for: req)
+    let (data, res) = try await session.data(for: req)
     let http = res as? HTTPURLResponse
     let json = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
     guard let http, (200 ..< 300).contains(http.statusCode) else {
@@ -91,6 +94,22 @@ public final class ComprehendlyClient: ObservableObject {
 
   public func submissionsGet(_ submissionId: String) async throws -> Any {
     try await gateway("forms.submissions.get", params: ["submission_id": submissionId])
+  }
+
+
+  public func submissionsSave(
+    pageId: String,
+    fieldValues: [String: Any],
+    title: String? = nil
+  ) async throws -> Any {
+    var payload: [String: Any] = [
+      "page_id": pageId,
+      "field_values": fieldValues
+    ]
+    if let title, !title.isEmpty {
+      payload["title"] = title
+    }
+    return try await gateway("forms.submissions.save", params: ["payload": payload])
   }
 
   public func voiceBridgeURL(pageId: String, mode: String) throws -> URL {
