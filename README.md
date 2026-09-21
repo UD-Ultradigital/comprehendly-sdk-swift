@@ -19,7 +19,7 @@ cd comprehendly-sdk-swift
 open Package.swift
 ```
 
-Or open `Examples/Demo/Demo.xcodeproj`.
+Or use the drop-in demo app source in `Examples/Demo` (no `.xcodeproj` is included).
 
 1. Sign up: [app.comprehendly.nz/signup](https://app.comprehendly.nz/signup)
 2. Publish a form. Settings → API → publishable key.
