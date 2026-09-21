@@ -34,8 +34,8 @@ client.store.load(page)
 ```
 
 ```swift
-// Bound host field
-client.store.bind(elementId: "el-mood") { mood = $0 as? String ?? "" }
+let url = try client.voiceBridgeURL(pageId: pageId, mode: "assistant")
+VoiceBridgeView(url: url, store: client.store)
 ```
 
 ## Identity

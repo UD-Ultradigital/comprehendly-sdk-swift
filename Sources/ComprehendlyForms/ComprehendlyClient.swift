@@ -88,4 +88,13 @@ public final class ComprehendlyClient: ObservableObject {
       "ui_consent_granted": true
     ])
   }
+
+  public func submissionsGet(_ submissionId: String) async throws -> Any {
+    try await gateway("forms.submissions.get", params: ["submission_id": submissionId])
+  }
+
+  public func voiceBridgeURL(pageId: String, mode: String) throws -> URL {
+    guard let token = accessToken else { throw ComprehendlyError.notConfigured }
+    return VoiceBridge.url(token: token, pageId: pageId, mode: mode)
+  }
 }

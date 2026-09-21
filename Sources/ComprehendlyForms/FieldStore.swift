@@ -140,4 +140,17 @@ public final class FieldStore: ObservableObject {
   public func unbind(_ id: UUID) {
     listeners[id] = nil
   }
+
+  public func hydrate(_ map: [String: Any], source: String = "hydrate") {
+    for (name, value) in map {
+      _ = try? set(fieldName: name, value: value, source: source)
+    }
+  }
+
+  public func applyHostMessage(_ data: [String: Any]) {
+    let bag = (data["field_values"] as? [String: Any])
+      ?? (data["values"] as? [String: Any])
+      ?? (data["fields"] as? [String: Any])
+    if let bag { hydrate(bag, source: "voice") }
+  }
 }

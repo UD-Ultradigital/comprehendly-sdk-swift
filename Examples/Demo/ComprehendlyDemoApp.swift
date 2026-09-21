@@ -14,6 +14,7 @@ final class DemoModel: ObservableObject {
   @Published var pageId = ""
   @Published var status = "Paste a pk_* key. Allow origin https://ios-demo.comprehendly.nz on the key."
   @Published var boundMood = ""
+  @Published var voiceURL: URL?
   let client = ComprehendlyClient(publishableKey: "")
 
   func load() async {
@@ -41,6 +42,14 @@ final class DemoModel: ObservableObject {
         }
       }
       status = "Loaded \(page.title ?? page.id)"
+    } catch {
+      status = error.localizedDescription
+    }
+  }
+
+  func startVoice(mode: String) {
+    do {
+      voiceURL = try client.voiceBridgeURL(pageId: pageId, mode: mode)
     } catch {
       status = error.localizedDescription
     }
@@ -80,8 +89,35 @@ struct DemoRootView: View {
               )
             }
         }
+        Section("Voice") {
+          Button("Assistant") { model.startVoice(mode: "assistant") }
+          Button("Silent") { model.startVoice(mode: "silent") }
+          Text("WKWebView loads docs.comprehendly.nz/voice-bridge.html → sdk embed. Allow mic. Allowlist https://ios-demo.comprehendly.nz on the key.")
+            .font(.footnote)
+        }
       }
       .navigationTitle("Comprehendly Swift")
+      .sheet(item: Binding(
+        get: { model.voiceURL.map { IdentifiedURL(url: $0) } },
+        set: { model.voiceURL = $0?.url }
+      )) { item in
+        NavigationStack {
+          VoiceBridgeView(url: item.url, store: model.client.store)
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Voice")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+              ToolbarItem(placement: .cancellationAction) {
+                Button("Close") { model.voiceURL = nil }
+              }
+            }
+        }
+      }
     }
   }
+}
+
+private struct IdentifiedURL: Identifiable {
+  let url: URL
+  var id: String { url.absoluteString }
 }
