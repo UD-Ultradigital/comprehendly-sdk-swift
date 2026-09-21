@@ -1,6 +1,6 @@
 # Comprehendly Forms — Swift SDK
 
-SwiftUI client for the same Comprehendly partner API as [`comprehendly-sdk-js`](https://github.com/flobo79/comprehendly-sdk-js) (`apiVersion` 1).
+SwiftUI client for the same Comprehendly partner API as [`comprehendly-sdk-js`](https://github.com/UD-Ultradigital/comprehendly-sdk-js) (`apiVersion` 1).
 
 - **Generated** — `ComprehendlyFormView` renders primitive fields from `forms.page.get`
 - **Bound** — `store.bind(elementId:)` patches your existing controls
@@ -14,7 +14,7 @@ Docs: https://docs.comprehendly.nz
 Requires Xcode 15+, a Comprehendly tenant, and a publishable key.
 
 ```bash
-git clone https://github.com/flobo79/comprehendly-sdk-swift.git
+git clone https://github.com/UD-Ultradigital/comprehendly-sdk-swift.git
 cd comprehendly-sdk-swift
 open Package.swift
 ```
