@@ -38,9 +38,10 @@ Use `catalogList()` to list published forms and `pageGet(_:)` to fetch a page de
 ```swift
 let catalog = try await client.catalogList()
 let page = try await client.pageGet("11111111-1111-4111-8111-111111111111")
+client.store.load(page)
 ```
 
-`pageGet(_:)` also loads the page into `client.store`.
+Load the page into `client.store` before using the generated or bound UI helpers below.
 
 ## Field identity
 
