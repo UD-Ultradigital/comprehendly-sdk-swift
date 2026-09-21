@@ -93,6 +93,21 @@ public final class ComprehendlyClient: ObservableObject {
     try await gateway("forms.submissions.get", params: ["submission_id": submissionId])
   }
 
+  public func submissionsSave(
+    pageId: String,
+    fieldValues: [String: Any],
+    title: String? = nil
+  ) async throws -> Any {
+    var payload: [String: Any] = [
+      "page_id": pageId,
+      "field_values": fieldValues
+    ]
+    if let title {
+      payload["title"] = title
+    }
+    return try await gateway("forms.submissions.save", params: ["payload": payload])
+  }
+
   public func voiceBridgeURL(pageId: String, mode: String) throws -> URL {
     guard let token = accessToken else { throw ComprehendlyError.notConfigured }
     return VoiceBridge.url(token: token, pageId: pageId, mode: mode)
