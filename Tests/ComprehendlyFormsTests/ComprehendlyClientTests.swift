@@ -3,14 +3,9 @@ import XCTest
 @testable import ComprehendlyForms
 
 final class ComprehendlyClientTests: XCTestCase {
-  override func tearDown() {
-    MockURLProtocol.requestHandler = nil
-    MockURLProtocol.requestObserver = nil
-    super.tearDown()
-  }
-
   func testSubmissionsSaveSendsPayload() async throws {
-    let session = makeSession()
+    let testID = UUID().uuidString
+    let session = makeSession(testID: testID)
     let client = ComprehendlyClient(
       publishableKey: "pk_test_123",
       functionsUrl: "https://example.test/functions/v1",
@@ -18,14 +13,18 @@ final class ComprehendlyClientTests: XCTestCase {
       session: session
     )
 
-    var requests: [URLRequest] = []
-    MockURLProtocol.requestObserver = { requests.append($0) }
-    MockURLProtocol.requestHandler = { request in
-      if request.url?.path.hasSuffix("/integration_exchange") == true {
-        return .ok(["access_token": "token_123"])
-      }
-      return .ok(["data": ["id": "sub_123"]])
-    }
+    let recorder = RequestRecorder()
+    MockURLProtocol.install(
+      testID: testID,
+      requestHandler: { request in
+        if request.url?.path.hasSuffix("/integration_exchange") == true {
+          return .ok(["access_token": "token_123"])
+        }
+        return .ok(["data": ["id": "sub_123"]])
+      },
+      requestObserver: { recorder.append($0) }
+    )
+    defer { MockURLProtocol.remove(testID: testID) }
 
     let data = try await client.submissionsSave(
       pageId: "page_123",
@@ -35,6 +34,7 @@ final class ComprehendlyClientTests: XCTestCase {
 
     let payload = (data as? [String: Any])?["id"] as? String
     XCTAssertEqual(payload, "sub_123")
+    let requests = recorder.all()
     XCTAssertEqual(requests.count, 2)
     XCTAssertEqual(requests.first?.url?.path, "/functions/v1/integration_exchange")
     XCTAssertEqual(requests.last?.url?.path, "/functions/v1/integration_gateway")
@@ -51,7 +51,8 @@ final class ComprehendlyClientTests: XCTestCase {
   }
 
   func testSubmissionsSaveOmitsNilTitle() async throws {
-    let session = makeSession()
+    let testID = UUID().uuidString
+    let session = makeSession(testID: testID)
     let client = ComprehendlyClient(
       publishableKey: "pk_test_123",
       functionsUrl: "https://example.test/functions/v1",
@@ -60,13 +61,18 @@ final class ComprehendlyClientTests: XCTestCase {
     )
     client.accessToken = "token_123"
 
-    var request: URLRequest?
-    MockURLProtocol.requestObserver = { request = $0 }
-    MockURLProtocol.requestHandler = { _ in .ok(["data": ["id": "sub_123"]]) }
+    let recorder = RequestRecorder()
+    MockURLProtocol.install(
+      testID: testID,
+      requestHandler: { _ in .ok(["data": ["id": "sub_123"]]) },
+      requestObserver: { recorder.append($0) }
+    )
+    defer { MockURLProtocol.remove(testID: testID) }
 
     _ = try await client.submissionsSave(pageId: "page_123", fieldValues: ["mood": "ok"])
 
-    let captured = try XCTUnwrap(request)
+    let requests = recorder.all()
+    let captured = try XCTUnwrap(requests.last)
     let bodyData = try XCTUnwrap(bodyData(from: captured))
     let body = try XCTUnwrap(try JSONSerialization.jsonObject(with: bodyData) as? [String: Any])
     let params = try XCTUnwrap(body["params"] as? [String: Any])
@@ -74,9 +80,10 @@ final class ComprehendlyClientTests: XCTestCase {
     XCTAssertNil(requestPayload["title"])
   }
 
-  private func makeSession() -> URLSession {
+  private func makeSession(testID: String) -> URLSession {
     let config = URLSessionConfiguration.ephemeral
     config.protocolClasses = [MockURLProtocol.self]
+    config.httpAdditionalHeaders = ["X-Mock-Test-ID": testID]
     return URLSession(configuration: config)
   }
 
@@ -99,22 +106,63 @@ final class ComprehendlyClientTests: XCTestCase {
   }
 }
 
+private final class RequestRecorder {
+  private var requests: [URLRequest] = []
+  private let lock = NSLock()
+
+  func append(_ request: URLRequest) {
+    lock.lock()
+    requests.append(request)
+    lock.unlock()
+  }
+
+  func all() -> [URLRequest] {
+    lock.lock()
+    defer { lock.unlock() }
+    return requests
+  }
+}
+
 private final class MockURLProtocol: URLProtocol {
-  static var requestHandler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
-  static var requestObserver: ((URLRequest) -> Void)?
+  private struct Hooks {
+    let requestHandler: (URLRequest) throws -> (HTTPURLResponse, Data)
+    let requestObserver: ((URLRequest) -> Void)?
+  }
+
+  private static var hooksByTestID: [String: Hooks] = [:]
+  private static let lock = NSLock()
+
+  static func install(
+    testID: String,
+    requestHandler: @escaping (URLRequest) throws -> (HTTPURLResponse, Data),
+    requestObserver: ((URLRequest) -> Void)? = nil
+  ) {
+    lock.lock()
+    hooksByTestID[testID] = Hooks(requestHandler: requestHandler, requestObserver: requestObserver)
+    lock.unlock()
+  }
+
+  static func remove(testID: String) {
+    lock.lock()
+    hooksByTestID.removeValue(forKey: testID)
+    lock.unlock()
+  }
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
   override func startLoading() {
-    guard let handler = Self.requestHandler else {
+    guard
+      let testID = request.value(forHTTPHeaderField: "X-Mock-Test-ID"),
+      let hooks = Self.hooks(for: testID)
+    else {
       client?.urlProtocol(self, didFailWithError: URLError(.badServerResponse))
       return
     }
 
     do {
-      Self.requestObserver?(request)
-      let (response, data) = try handler(request)
+      hooks.requestObserver?(request)
+      let (response, data) = try hooks.requestHandler(request)
       client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
       client?.urlProtocol(self, didLoad: data)
       client?.urlProtocolDidFinishLoading(self)
@@ -124,6 +172,12 @@ private final class MockURLProtocol: URLProtocol {
   }
 
   override func stopLoading() {}
+
+  private static func hooks(for testID: String) -> Hooks? {
+    lock.lock()
+    defer { lock.unlock() }
+    return hooksByTestID[testID]
+  }
 }
 
 private extension (HTTPURLResponse, Data) {

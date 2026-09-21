@@ -6,7 +6,7 @@ public final class ComprehendlyClient: ObservableObject {
   public var origin: String
   public var functionsUrl: String
   public var anonKey: String
-  public var session: URLSession
+  public let session: URLSession
   public var accessToken: String?
   public let store = FieldStore()
 
