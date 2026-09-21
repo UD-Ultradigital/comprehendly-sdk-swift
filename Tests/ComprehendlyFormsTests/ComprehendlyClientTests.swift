@@ -38,8 +38,10 @@ final class ComprehendlyClientTests: XCTestCase {
       XCTAssertEqual(payload["page_id"] as? String, "page-123")
       XCTAssertNil(payload["title"])
 
-      let fieldValues = try XCTUnwrap(payload["field_values"] as? [String: String])
-      XCTAssertEqual(fieldValues, ["mood": "ok", "notes": "Ready"])
+      let fieldValues = try XCTUnwrap(payload["field_values"] as? [String: Any])
+      XCTAssertEqual(fieldValues["mood"] as? String, "ok")
+      XCTAssertEqual(fieldValues["notes"] as? String, "Ready")
+      XCTAssertEqual(fieldValues["consent"] as? Bool, true)
 
       return (
         HTTPURLResponse(
@@ -54,7 +56,7 @@ final class ComprehendlyClientTests: XCTestCase {
 
     let response = try await client.submissionsSave(
       pageId: "page-123",
-      fieldValues: ["mood": "ok", "notes": "Ready"]
+      fieldValues: ["mood": "ok", "notes": "Ready", "consent": true]
     )
 
     let data = try XCTUnwrap(response as? [String: Any])

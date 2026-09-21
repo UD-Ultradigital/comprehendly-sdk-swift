@@ -93,6 +93,13 @@ public final class ComprehendlyClient: ObservableObject {
     try await gateway("forms.submissions.get", params: ["submission_id": submissionId])
   }
 
+  /// Saves a submission for the given page.
+  ///
+  /// - Parameters:
+  ///   - pageId: Comprehendly page identifier.
+  ///   - fieldValues: Values keyed by Comprehendly `field_name`, not labels or `element.id`.
+  ///   - title: Optional submission title.
+  /// - Returns: The `data` envelope returned by `forms.submissions.save`.
   public func submissionsSave(
     pageId: String,
     fieldValues: [String: Any],
