@@ -29,4 +29,19 @@ final class VoiceBridgeTests: XCTestCase {
     store.applyHostMessage(["field_values": ["mood": "low"]])
     XCTAssertEqual(store.get("mood") as? String, "low")
   }
+
+  func testCamelCaseFieldValues() {
+    let store = FieldStore()
+    store.load(ComprehendlyPage(
+      id: "p1",
+      title: nil,
+      elements: [[
+        "id": "el-mood",
+        "type": "form_field",
+        "data": ["field_name": "mood", "label": "Mood", "input_type": "text"]
+      ]]
+    ))
+    store.applyHostMessage(["fieldValues": ["mood": "ok"]])
+    XCTAssertEqual(store.get("mood") as? String, "ok")
+  }
 }
