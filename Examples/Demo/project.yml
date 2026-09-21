@@ -1,0 +1,37 @@
+name: ComprehendlyDemo
+options:
+  bundleIdPrefix: nz.comprehendly
+  deploymentTarget:
+    iOS: "16.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: false
+
+packages:
+  ComprehendlyForms:
+    path: ../..
+
+settings:
+  base:
+    PRODUCT_BUNDLE_IDENTIFIER: nz.comprehendly.sdk.demo
+    GENERATE_INFOPLIST_FILE: YES
+    INFOPLIST_KEY_CFBundleDisplayName: Comprehendly Demo
+    INFOPLIST_KEY_NSMicrophoneUsageDescription: Voice fill uses the microphone through the hosted Comprehendly bridge.
+    INFOPLIST_KEY_UILaunchScreen_Generation: YES
+    INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_STYLE: Automatic
+    CURRENT_PROJECT_VERSION: 1
+    MARKETING_VERSION: 0.1.0
+
+targets:
+  ComprehendlyDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: ComprehendlyDemoApp.swift
+    dependencies:
+      - package: ComprehendlyForms
+        product: ComprehendlyForms
+    scheme:
+      storeKitConfiguration: ""

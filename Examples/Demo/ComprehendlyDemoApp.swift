@@ -36,7 +36,7 @@ final class DemoModel: ObservableObject {
       let page = try await client.pageGet(id)
       if let first = client.store.fields.first {
         _ = try client.store.bind(elementId: first.elementId) { [weak self] value in
-          DispatchQueue.main.async {
+          Task { @MainActor in
             self?.boundMood = value as? String ?? ""
           }
         }
@@ -50,6 +50,18 @@ final class DemoModel: ObservableObject {
   func startVoice(mode: String) {
     do {
       voiceURL = try client.voiceBridgeURL(pageId: pageId, mode: mode)
+    } catch {
+      status = error.localizedDescription
+    }
+  }
+
+  func save() async {
+    do {
+      let saved = try await client.submissionsSave(
+        pageId: pageId,
+        fieldValues: client.store.values
+      )
+      status = "Saved \(saved)"
     } catch {
       status = error.localizedDescription
     }
@@ -81,13 +93,18 @@ struct DemoRootView: View {
           Text("First field, host TextField, same store")
             .font(.footnote)
           TextField("Host widget", text: $model.boundMood)
-            .onChange(of: model.boundMood) { _, new in
-              try? model.client.store.set(
+            .onChange(of: model.boundMood) { new in
+              _ = try? model.client.store.set(
                 elementId: model.client.store.fields.first?.elementId,
                 value: new,
                 source: "bind"
               )
             }
+        }
+        Section("Save") {
+          Button("submissionsSave") {
+            Task { await model.save() }
+          }
         }
         Section("Voice") {
           Button("Assistant") { model.startVoice(mode: "assistant") }
