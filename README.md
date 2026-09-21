@@ -6,21 +6,12 @@ Docs: https://docs.comprehendly.nz
 
 ## Install
 
-Add the Swift Package dependency in Xcode and select the **ComprehendlyForms** product.
+In Xcode:
 
-```swift
-dependencies: [
-  .package(url: "https://github.com/UD-Ultradigital/comprehendly-sdk-swift.git", branch: "main")
-],
-targets: [
-  .target(
-    name: "YourApp",
-    dependencies: [
-      .product(name: "ComprehendlyForms", package: "comprehendly-sdk-swift")
-    ]
-  )
-]
-```
+1. **File → Add Package Dependencies…**
+2. Enter `https://github.com/UD-Ultradigital/comprehendly-sdk-swift.git`
+3. Choose a pinned revision or release when one is available for your app
+4. Add the **ComprehendlyForms** product to your target
 
 ## Configure the client
 
