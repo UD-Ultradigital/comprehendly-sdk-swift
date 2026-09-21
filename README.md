@@ -1,43 +1,114 @@
-# Comprehendly Forms — Swift SDK
+# Comprehendly Swift SDK developer guide
 
-SwiftUI client for the same Comprehendly partner API as [`comprehendly-sdk-js`](https://github.com/UD-Ultradigital/comprehendly-sdk-js) (`apiVersion` 1).
-
-- **Generated** — `ComprehendlyFormView` renders primitive fields from `forms.page.get`
-- **Bound** — `store.bind(elementId:)` patches your existing controls
-
-Voice (assistant / silent) uses the hosted WebView bridge; this package does not reimplement Realtime.
+Swift package for the Comprehendly Forms partner API.
 
 Docs: https://docs.comprehendly.nz
 
-## Clone and run the demo
-
-Requires Xcode 15+, a Comprehendly tenant, and a publishable key.
+## Run the iOS demo
 
 ```bash
 git clone https://github.com/UD-Ultradigital/comprehendly-sdk-swift.git
-cd comprehendly-sdk-swift
-open Package.swift
+open comprehendly-sdk-swift/Examples/Demo/ComprehendlyDemo.xcodeproj
 ```
 
-Or use the drop-in demo app source in `Examples/Demo` (no `.xcodeproj` is included).
+Pick an iPhone simulator and Run. Paste a publishable key. Allowlist **`https://ios-demo.comprehendly.nz`** on that key (the client sends it as `Origin`).
 
-1. Sign up: [app.comprehendly.nz/signup](https://app.comprehendly.nz/signup)
-2. Publish a form. Settings → API → publishable key.
-3. Allowlist origin `https://ios-demo.comprehendly.nz` (the SDK sends this `Origin` header on exchange).
-4. In the demo, paste `pk_*` and the page UUID (or pick from catalog).
+## Install
+
+In Xcode:
+
+1. **File → Add Package Dependencies…**
+2. Enter `https://github.com/UD-Ultradigital/comprehendly-sdk-swift.git`
+3. Choose a pinned revision or release when one is available for your app
+4. Add the **ComprehendlyForms** product to your target
+
+## Configure the client
+
+`ComprehendlyClient` exchanges a publishable key for a short-lived gateway token.
 
 ```swift
-let client = ComprehendlyClient(publishableKey: "pk_test_…")
+import ComprehendlyForms
+
+let client = ComprehendlyClient(
+  publishableKey: "pk_test_..."
+)
+```
+
+The default `Origin` header is `https://ios-demo.comprehendly.nz`. That exact origin must be on the publishable key allowlist or `exchange()` will fail.
+
+```swift
 try await client.exchange()
-let page = try await client.pageGet(pageId)
+```
+
+## Load forms
+
+Use `catalogList()` to list published forms and `pageGet(_:)` to fetch a page definition.
+
+```swift
+let catalog = try await client.catalogList()
+let page = try await client.pageGet("11111111-1111-4111-8111-111111111111")
 client.store.load(page)
 ```
 
+Load the page into `client.store` before using the generated or bound UI helpers below.
+
+## Field identity
+
+- Bind host widgets by `element.id`
+- Submission values are keyed by `field_name`
+- Never use labels as identifiers
+
+Field identity is `element.id` + `field_name`: resolve by `element.id`, persist by `field_name`.
+
+## Generated UI
+
+Use `ComprehendlyFormView` when you want the SDK to render supported primitive controls from the loaded page.
+
 ```swift
-let url = try client.voiceBridgeURL(pageId: pageId, mode: "assistant")
+ComprehendlyFormView(store: client.store)
+```
+
+This is generated input UI, not a reproduction of full Comprehendly page chrome.
+
+## Bind your own widgets
+
+If your app already has its own controls, bind them through `FieldStore` using `elementId`.
+
+```swift
+let bindingId = try client.store.bind(elementId: "el-mood") { value in
+  print("Updated:", value as? String ?? "")
+}
+
+try client.store.set(elementId: "el-mood", value: "ok", source: "host")
+client.store.unbind(bindingId)
+```
+
+Do not overlay Comprehendly chrome on host widgets. Keep your app's controls native and sync values through the store.
+
+## Voice
+
+Use the hosted voice bridge through `VoiceBridgeView`.
+
+```swift
+let url = try client.voiceBridgeURL(pageId: page.id, mode: "assistant")
 VoiceBridgeView(url: url, store: client.store)
 ```
 
-## Identity
+The voice experience is hosted; do not reimplement GPT Realtime or replace the bridge with custom realtime transport.
 
-Bind with **element id** (stable). The engine writes **field_name**. Labels are display-only.
+## Save submissions
+
+Use `submissionsSave(pageId:fieldValues:title:)` to persist values keyed by `field_name`.
+
+```swift
+let result = try await client.submissionsSave(
+  pageId: page.id,
+  fieldValues: [
+    "mood": "ok",
+    "notes": "Ready for review"
+  ],
+  title: "Intake"
+)
+```
+
+`submissionsGet(_:)` remains available for fetching an existing submission.
